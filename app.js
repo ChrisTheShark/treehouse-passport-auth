@@ -1,15 +1,51 @@
 'use strict';
 const express = require('express'),
+    app = express(),
     path = require('path'),
     favicon = require('serve-favicon'),
     logger = require('morgan'),
     bodyParser = require('body-parser'),
+    passport = require('passport'),
+    GitHubStrategy = require('passport-github').Strategy,
+    session = require('express-session'),
+    MongoStore = require('connect-mongo')(session),
     mongoose = require('mongoose'),
     User = require("./models/user");
 
-var routes = require('./routes/index');
+passport.use(new GitHubStrategy({
+    clientID: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    callbackUrl: 'http://localhost:3000/auth/github/callback'
+}, (accessToken, refreshToken, profile, done) => {
+    User.findOneAndUpdate({
+        name: profile.username
+    }, {
+        $set: {
+            name: profile.username,
+            photo: profile.photos[0].value
+        }
+    }, {
+        new: true,
+        upsert: true
+    }, (error, user) => {
+        done(error, user);
+    });
+}));
 
-var app = express();
+passport.serializeUser((user, done) => {
+    done(null, user._id);
+});
+
+passport.deserializeUser((userId, done) => {
+    User.findById({
+        _id: userId
+    }).then((user) => {
+        done(null, user);
+    });
+});
+
+let routes = require('./routes/index');
+let auth = require('./routes/auth');
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -26,12 +62,31 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // mongodb connection
 mongoose.connect("mongodb://localhost:27017/bookworm-oauth");
-var db = mongoose.connection;
+let db = mongoose.connection;
+
+// Session config for Passport and MongoDb
+let sessionOptions = {
+    secret: 'super duper secret',
+    resave: true,
+    saveUninitialized: true,
+    store: new MongoStore({
+        mongooseConnection: db
+    })
+}
+
+app.use(session(sessionOptions));
+
+// Initialize Passport
+app.use(passport.initialize());
+
+// Restore Session
+app.use(passport.session());
 
 // mongo error
 db.on('error', console.error.bind(console, 'connection error:'));
 
 app.use('/', routes);
+app.use('/auth', auth);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
