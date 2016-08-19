@@ -7,17 +7,14 @@ var UserSchema = new mongoose.Schema({
     },
     name: {
         type: String,
-        required: true,
         trim: true,
     },
     favoriteBook: {
         type: String,
-        required: false,
         trim: true
     },
     photo: {
         type: String,
-        required: true,
         trim: true
     }
 });

@@ -14,6 +14,17 @@ router.get('/github/callback', passport.authenticate('github', {
     res.redirect('/');
 });
 
+// GET auth/login/facebook
+router.get('/login/facebook', passport.authenticate('facebook'));
+
+// GET auth/facebook/callback
+router.get('/facebook/callback', passport.authenticate('facebook', {
+    failureRedirect: '/'
+}), (req, res) => {
+    // Successful authenication, Redirect to profile page.
+    res.redirect('/');
+});
+
 router.get('/logout', (req, res) => {
     req.logout();
     res.redirect('/');

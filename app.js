@@ -7,6 +7,7 @@ const express = require('express'),
     bodyParser = require('body-parser'),
     passport = require('passport'),
     GitHubStrategy = require('passport-github').Strategy,
+    FacebookStrategy = require('passport-facebook').Strategy,
     session = require('express-session'),
     MongoStore = require('connect-mongo')(session),
     mongoose = require('mongoose'),
@@ -31,6 +32,26 @@ passport.use(new GitHubStrategy({
         done(error, user);
     });
 }));
+
+passport.use(new FacebookStrategy({
+    clientID: process.env.FACEBOOK_CLIENT_ID,
+    clientSecret: process.env.FACEBOOK_CLIENT_ID_CLIENT_SECRET,
+    callbackUrl: 'http://localhost:3000/auth/facebook/callback',
+    profileFields: ['email']
+}), (accessToken, refreshToken, profile, done) => {
+    User.findOneAndUpdate({
+        email: profile.emails[0].value
+    }, {
+        $set: {
+            email: profile.emails[0].value
+        }
+    }, {
+        new: true,
+        upsert: true
+    }, (error, user) => {
+        done(error, user);
+    });
+});
 
 passport.serializeUser((user, done) => {
     done(null, user._id);
